@@ -62,13 +62,6 @@ function renderSvg() {
 
     const imported = document.importNode(svg, true);
     imported.classList.add("preview-svg");
-    imported.removeAttribute("width");
-    imported.removeAttribute("height");
-    imported.setAttribute("width", "100%");
-    imported.setAttribute("height", "100%");
-    if (!imported.getAttribute("preserveAspectRatio")) {
-      imported.setAttribute("preserveAspectRatio", "xMidYMid meet");
-    }
     preview?.replaceChildren(imported);
     setStatus("預覽已更新。", "success");
     logDebug("成功渲染輸入的 SVG。");
@@ -95,7 +88,6 @@ window.addEventListener("DOMContentLoaded", () => {
   loadSampleBtn?.addEventListener("click", () => {
     input.value = sample;
     logDebug("載入預設範例。");
-    setStatus("已載入範例，已自動套用預覽。", "success");
     renderSvg();
   });
 
@@ -105,19 +97,16 @@ window.addEventListener("DOMContentLoaded", () => {
       localStorage.removeItem(STORAGE_KEY);
     }
     logDebug("清除輸入並移除快取。");
-    setStatus("已清除輸入與快取。", "info");
     renderSvg();
   });
 
   const updateScale = (value) => {
     const numeric = Number(value);
     const clamped = Number.isFinite(numeric) ? Math.min(140, Math.max(50, numeric)) : 100;
-    const target = preview?.style ?? document.documentElement.style;
-    target.setProperty("--preview-scale", (clamped / 100).toString());
+    document.documentElement.style.setProperty("--preview-scale", (clamped / 100).toString());
     if (scaleLabel) {
       scaleLabel.textContent = `${clamped}%`;
     }
-    logDebug(`調整預覽縮放為 ${clamped}%。`);
   };
 
   if (scaleControl) {
