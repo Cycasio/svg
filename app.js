@@ -4,6 +4,8 @@ const status = document.getElementById("status");
 const loadSampleBtn = document.getElementById("load-sample");
 const debugLog = document.getElementById("debug-log");
 const clearBtn = document.getElementById("clear-input");
+const scaleControl = document.getElementById("preview-scale");
+const scaleLabel = document.getElementById("preview-scale-label");
 const STORAGE_KEY = "svg-live-preview-input";
 
 const sample = `<svg width="240" height="240" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
@@ -97,6 +99,22 @@ window.addEventListener("DOMContentLoaded", () => {
     logDebug("清除輸入並移除快取。");
     renderSvg();
   });
+
+  const updateScale = (value) => {
+    const numeric = Number(value);
+    const clamped = Number.isFinite(numeric) ? Math.min(140, Math.max(50, numeric)) : 100;
+    document.documentElement.style.setProperty("--preview-scale", (clamped / 100).toString());
+    if (scaleLabel) {
+      scaleLabel.textContent = `${clamped}%`;
+    }
+  };
+
+  if (scaleControl) {
+    updateScale(scaleControl.value || "100");
+    scaleControl.addEventListener("input", (event) => {
+      updateScale(event.target.value);
+    });
+  }
 
   window.addEventListener("error", (event) => {
     logDebug(`腳本錯誤：${event.message}`);

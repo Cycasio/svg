@@ -13,10 +13,18 @@
       --text: #1d1d1f;
       --code-bg: #0f172a;
       --code-fg: #e2e8f0;
+      --preview-scale: 1;
     }
 
     * {
       box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      overflow-x: hidden;
     }
 
     body {
@@ -46,9 +54,18 @@
 
     main {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: minmax(0, 1fr);
       gap: 1rem;
-      padding: 1.5rem;
+      padding: 1.5rem clamp(1rem, 3vw, 2rem) 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @media (min-width: 980px) {
+      main {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
 
     .panel {
@@ -133,14 +150,16 @@
       min-height: 320px;
       border-top: 1px solid var(--border);
       padding: 1rem;
+      overflow: auto;
+      width: 100%;
     }
 
     #svg-preview {
-      width: min(100%, 960px);
-      height: 100%;
+      width: clamp(240px, 100%, 960px);
       display: grid;
       place-items: center;
       padding: clamp(1rem, 2vw, 2rem);
+      max-width: 100%;
     }
 
     #svg-preview .preview-svg {
@@ -150,6 +169,29 @@
       max-height: min(70vh, 720px);
       max-width: 100%;
       object-fit: contain;
+      transform: scale(var(--preview-scale));
+      transform-origin: center;
+    }
+
+    .preview-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1rem;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.25rem 1rem;
+      color: #475569;
+      border-bottom: 1px solid var(--border);
+      background: #f8fafc;
+    }
+
+    .preview-controls label {
+      font-weight: 600;
+    }
+
+    .preview-controls input[type="range"] {
+      flex: 1;
+      min-width: 160px;
     }
 
     #status {
@@ -235,6 +277,20 @@
       <header>
         <h2>即時預覽</h2>
       </header>
+      <div class="preview-controls">
+        <label for="preview-scale">預覽縮放</label>
+        <input
+          type="range"
+          id="preview-scale"
+          name="preview-scale"
+          min="50"
+          max="140"
+          step="10"
+          value="100"
+          aria-label="預覽縮放百分比"
+        />
+        <span id="preview-scale-label" aria-live="polite">100%</span>
+      </div>
       <div class="preview-container">
         <div id="svg-preview" aria-live="polite"></div>
       </div>
