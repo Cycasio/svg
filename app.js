@@ -103,12 +103,10 @@ window.addEventListener("DOMContentLoaded", () => {
   const updateScale = (value) => {
     const numeric = Number(value);
     const clamped = Number.isFinite(numeric) ? Math.min(140, Math.max(50, numeric)) : 100;
-    const target = preview?.style ?? document.documentElement.style;
-    target.setProperty("--preview-scale", (clamped / 100).toString());
+    document.documentElement.style.setProperty("--preview-scale", (clamped / 100).toString());
     if (scaleLabel) {
       scaleLabel.textContent = `${clamped}%`;
     }
-    logDebug(`調整預覽縮放為 ${clamped}%。`);
   };
 
   if (scaleControl) {

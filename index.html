@@ -36,7 +36,7 @@
     }
 
     header {
-      padding: clamp(1rem, 2vw, 1.5rem);
+      padding: 1.5rem;
       border-bottom: 1px solid var(--border);
       background: white;
     }
@@ -55,9 +55,9 @@
     main {
       display: grid;
       grid-template-columns: minmax(0, 1fr);
-      gap: clamp(0.75rem, 2vw, 1.25rem);
-      padding: clamp(1rem, 2.5vw, 1.5rem);
-      max-width: min(1200px, 100%);
+      gap: 1rem;
+      padding: 1.5rem clamp(1rem, 3vw, 2rem) 2rem;
+      max-width: 1200px;
       margin: 0 auto;
       width: 100%;
     }
@@ -66,6 +66,9 @@
       main {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1rem;
+      padding: 1.5rem;
     }
 
     .panel {
@@ -111,7 +114,6 @@
       background: var(--code-bg);
       color: var(--code-fg);
       outline-color: var(--accent);
-      max-width: 100%;
     }
 
     .info {
@@ -150,29 +152,28 @@
       background: repeating-conic-gradient(#f8fafc 0% 25%, #eef2ff 0% 50%);
       min-height: 320px;
       border-top: 1px solid var(--border);
-      padding: clamp(0.75rem, 2vw, 1.25rem);
+      padding: 1rem;
       overflow: auto;
       width: 100%;
-      max-width: 100%;
     }
 
     #svg-preview {
-      width: 100%;
+      width: clamp(240px, 100%, 960px);
       display: grid;
       place-items: center;
-      padding: clamp(0.75rem, 2vw, 1.5rem);
-      max-width: min(960px, 100%);
-      transform: scale(var(--preview-scale));
-      transform-origin: center;
+      padding: clamp(1rem, 2vw, 2rem);
+      max-width: 100%;
     }
 
     #svg-preview .preview-svg {
       display: block;
-      width: auto;
+      width: 100%;
       height: auto;
       max-height: min(70vh, 720px);
       max-width: 100%;
       object-fit: contain;
+      transform: scale(var(--preview-scale));
+      transform-origin: center;
     }
 
     .preview-controls {
@@ -194,6 +195,14 @@
     .preview-controls input[type="range"] {
       flex: 1;
       min-width: 160px;
+    }
+
+    #svg-preview {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 1.5rem;
     }
 
     #status {
@@ -242,38 +251,6 @@
       color: #6b7280;
       font-size: 0.9rem;
     }
-
-    @media (max-width: 720px) {
-      h1 {
-        font-size: 1.35rem;
-      }
-
-      main {
-        padding: 1rem;
-      }
-
-      .panel .body {
-        padding: 0.75rem 1rem 1rem;
-      }
-
-      .actions {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .preview-controls {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      textarea {
-        min-height: 200px;
-      }
-
-      #svg-preview {
-        padding: 0.75rem;
-      }
-    }
   </style>
 </head>
 <body>
@@ -304,6 +281,9 @@
           <summary>除錯訊息</summary>
           <pre id="debug-log">等待輸入…</pre>
         </details>
+        <textarea id="svg-input" spellcheck="false" aria-label="SVG input"></textarea>
+        <p class="info">支援完整 &lt;svg&gt; 標籤；修改時自動更新預覽。</p>
+        <p id="status">貼上 SVG 後開始預覽。</p>
       </div>
     </section>
 
@@ -336,5 +316,58 @@
   <noscript class="debug">需要啟用 JavaScript 才能顯示即時預覽。</noscript>
 
   <script src="app.js" defer></script>
+  <script>
+    const input = document.getElementById("svg-input");
+    const preview = document.getElementById("svg-preview");
+    const status = document.getElementById("status");
+
+    const sample = `<svg width="240" height="240" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#22d3ee" />
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="104" height="104" rx="18" fill="url(#g)" />
+  <circle cx="60" cy="60" r="34" fill="white" opacity="0.9" />
+  <path d="M60 32 L78 76 H42 Z" fill="#0f172a" opacity="0.8" />
+</svg>`;
+
+    input.value = sample;
+
+    function renderSvg() {
+      const raw = input.value.trim();
+
+      if (!raw) {
+        preview.replaceChildren();
+        status.textContent = "貼上 SVG 後開始預覽。";
+        return;
+      }
+
+      try {
+        const doc = new DOMParser().parseFromString(raw, "image/svg+xml");
+        const parseError = doc.querySelector("parsererror");
+
+        if (parseError) {
+          throw new Error(parseError.textContent || "解析失敗");
+        }
+
+        const svg = doc.documentElement;
+        if (svg.nodeName.toLowerCase() !== "svg") {
+          throw new Error("根節點不是 <svg>");
+        }
+
+        const imported = document.importNode(svg, true);
+        preview.replaceChildren(imported);
+        status.textContent = "預覽已更新。";
+      } catch (err) {
+        preview.replaceChildren();
+        status.textContent = `無法渲染：${err.message}`;
+      }
+    }
+
+    input.addEventListener("input", renderSvg);
+    renderSvg();
+  </script>
 </body>
 </html>
