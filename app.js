@@ -3,6 +3,8 @@ const preview = document.getElementById("svg-preview");
 const status = document.getElementById("status");
 const loadSampleBtn = document.getElementById("load-sample");
 const debugLog = document.getElementById("debug-log");
+const clearBtn = document.getElementById("clear-input");
+const STORAGE_KEY = "svg-live-preview-input";
 
 const sample = `<svg width="240" height="240" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -61,6 +63,9 @@ function renderSvg() {
     preview?.replaceChildren(imported);
     setStatus("預覽已更新。", "success");
     logDebug("成功渲染輸入的 SVG。");
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, raw);
+    }
   } catch (err) {
     preview?.replaceChildren();
     setStatus(`無法渲染：${err.message}`, "error");
@@ -71,15 +76,25 @@ function renderSvg() {
 window.addEventListener("DOMContentLoaded", () => {
   if (!input) return;
 
-  input.value = input.value.trim() || sample;
-  setStatus("已載入範例，編輯後立即預覽。", "info");
-  logDebug("初始化完成，已填入預設範例。");
+  const saved = typeof localStorage !== "undefined" ? localStorage.getItem(STORAGE_KEY) : "";
+  input.value = (saved && saved.trim()) || input.value.trim() || sample;
+  setStatus(saved ? "已載入上次輸入內容。" : "已載入範例，編輯後立即預覽。", "info");
+  logDebug(saved ? "初始化完成，已載入快取內容。" : "初始化完成，已填入預設範例。");
   renderSvg();
   input.addEventListener("input", renderSvg);
 
   loadSampleBtn?.addEventListener("click", () => {
     input.value = sample;
     logDebug("載入預設範例。");
+    renderSvg();
+  });
+
+  clearBtn?.addEventListener("click", () => {
+    input.value = "";
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+    logDebug("清除輸入並移除快取。");
     renderSvg();
   });
 
