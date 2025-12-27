@@ -33,19 +33,6 @@
       gap: clamp(1rem, 2vw, 1.25rem);
     }
 
-    h1 {
-      margin: 0 0 0.25rem;
-      font-size: clamp(1.4rem, 2.6vw, 1.8rem);
-      font-weight: 800;
-      text-align: center;
-    }
-
-    p.lead {
-      margin: 0 0 0.75rem;
-      text-align: center;
-      color: var(--muted);
-    }
-
     .panel {
       background: var(--panel);
       border: 1px solid var(--border);
@@ -114,11 +101,6 @@
 </head>
 <body>
   <main>
-    <header>
-      <h1>SVG 即時預覽</h1>
-      <p class="lead">上方貼上 SVG 語法，下方立即顯示圖片，僅保留這兩個區域。</p>
-    </header>
-
     <section class="panel">
       <h2>貼上 SVG 語法</h2>
       <textarea id="svg-input" spellcheck="false" aria-label="SVG input" placeholder="貼上完整的 <svg> 標籤"></textarea>
