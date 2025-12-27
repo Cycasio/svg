@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SVG 即時預覽</title>
+  <style>
+    :root {
+      --bg: #f7f7f8;
+      --panel: #ffffff;
+      --border: #d6d6dc;
+      --accent: #2563eb;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --code-bg: #0f172a;
+      --code-fg: #e2e8f0;
+      --preview-scale: 1;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Inter", "Noto Sans TC", system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    header {
+      padding: clamp(1rem, 2vw, 1.5rem);
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    h1 { margin: 0 0 0.25rem; font-size: clamp(1.4rem, 2vw, 1.7rem); }
+    p.lead { margin: 0; color: var(--muted); }
+
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: clamp(1rem, 2vw, 1.5rem);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: clamp(1rem, 2vw, 1.25rem);
+    }
+
+    section.panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+      display: flex;
+      flex-direction: column;
+      min-height: 320px;
+    }
+
+    section.panel > header {
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      background: #f8fafc;
+      border-radius: 12px 12px 0 0;
+      position: relative;
+    }
+
+    section.panel > header h2 { margin: 0; font-size: 1rem; font-weight: 700; }
+
+    .panel .body {
+      padding: clamp(0.75rem, 2vw, 1.25rem);
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      flex: 1;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 260px;
+      resize: vertical;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 0.9rem;
+      font: 14px/1.5 "JetBrains Mono", "SFMono-Regular", "Menlo", "Consolas", monospace;
+      outline-color: var(--accent);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    button {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 10px;
+      padding: 0.5rem 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      color: var(--text);
+    }
+
+    button:hover,
+    button:focus-visible {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+      outline: none;
+    }
+
+    .info { color: var(--muted); font-size: 0.95rem; margin: 0; }
+
+    .status {
+      padding: 0.65rem 0.75rem;
+      border-radius: 10px;
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      font-size: 0.95rem;
+    }
+
+    .status[data-tone="error"] { color: #b91c1c; border-color: #f87171; background: #fef2f2; }
+    .status[data-tone="success"] { color: #15803d; border-color: #4ade80; background: #f0fdf4; }
+
+    .preview-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem 1rem;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      background: #f8fafc;
+    }
+
+    .preview-controls label { font-weight: 700; color: var(--text); }
+    .preview-controls input[type="range"] { flex: 1; min-width: 160px; }
+
+    .preview-shell {
+      padding: clamp(0.75rem, 2vw, 1.25rem);
+      background: repeating-conic-gradient(#f8fafc 0% 25%, #eef2ff 0% 50%);
+      border-top: 1px solid var(--border);
+      flex: 1;
+      overflow: auto;
+    }
+
+    .preview-box {
+      margin: 0 auto;
+      max-width: 100%;
+      width: min(960px, 100%);
+      display: grid;
+      place-items: center;
+      background: #ffffff;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      padding: clamp(0.75rem, 2vw, 1.25rem);
+      transform: scale(var(--preview-scale));
+      transform-origin: center top;
+      transition: transform 0.2s ease;
+    }
+
+    .preview-box svg {
+      width: 100%;
+      height: auto;
+      max-height: 70vh;
+      display: block;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1rem 1.5rem 1.5rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 640px) {
+      header { position: static; }
+      textarea { min-height: 200px; }
+      .preview-box { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SVG 即時預覽</h1>
+    <p class="lead">貼上 SVG 語法立刻顯示，內建範例、清除與縮放控制。</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <header><h2>輸入</h2></header>
+      <div class="body">
+        <textarea id="svg-input" spellcheck="false" aria-label="SVG input" placeholder="貼上完整的 <svg> 標籤"></textarea>
+        <div class="actions">
+          <button type="button" id="load-sample">載入範例</button>
+          <button type="button" id="clear-input">清除輸入</button>
+          <p class="info" aria-live="polite">修改即自動更新；內容會保留在本機。</p>
+        </div>
+        <p class="status" id="status" role="status" aria-live="polite">貼上 SVG 後開始預覽。</p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <header><h2>預覽</h2></header>
+      <div class="preview-controls">
+        <label for="preview-scale">預覽縮放</label>
+        <input type="range" id="preview-scale" min="50" max="150" step="5" value="100" aria-label="預覽縮放百分比" />
+        <span id="scale-label">100%</span>
+      </div>
+      <div class="preview-shell">
+        <div class="preview-box" id="preview"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>全部功能寫在單一 HTML，方便直接部署到 GitHub Pages。</footer>
+
+  <script>
+    (function() {
+      const input = document.getElementById("svg-input");
+      const preview = document.getElementById("preview");
+      const status = document.getElementById("status");
+      const loadSample = document.getElementById("load-sample");
+      const clearBtn = document.getElementById("clear-input");
+      const scale = document.getElementById("preview-scale");
+      const scaleLabel = document.getElementById("scale-label");
+      const STORAGE_KEY = "svg-rwd-preview";
+
+      const sample = `<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+  </defs>
+  <rect x="10" y="10" width="140" height="140" rx="24" fill="url(#grad)" />
+  <circle cx="80" cy="80" r="46" fill="#0f172a" opacity="0.08" />
+  <path d="M80 34 L110 120 H50 Z" fill="#0f172a" opacity="0.78" />
+</svg>`;
+
+      function setStatus(message, tone = "info") {
+        status.textContent = message;
+        status.dataset.tone = tone;
+      }
+
+      function render(raw) {
+        const trimmed = (raw || "").trim();
+        if (!trimmed) {
+          preview.replaceChildren();
+          setStatus("貼上 SVG 後開始預覽。", "info");
+          return;
+        }
+
+        try {
+          const doc = new DOMParser().parseFromString(trimmed, "image/svg+xml");
+          const parseError = doc.querySelector("parsererror");
+          if (parseError) throw new Error(parseError.textContent || "解析失敗");
+          const svg = doc.documentElement;
+          if (svg.nodeName.toLowerCase() !== "svg") throw new Error("根節點必須是 <svg>");
+          svg.removeAttribute("width");
+          svg.removeAttribute("height");
+          svg.setAttribute("preserveAspectRatio", svg.getAttribute("preserveAspectRatio") || "xMidYMid meet");
+          svg.setAttribute("width", "100%");
+          svg.setAttribute("height", "100%");
+          const clone = document.importNode(svg, true);
+          clone.classList.add("preview-svg");
+          preview.replaceChildren(clone);
+          setStatus("預覽已更新。", "success");
+          localStorage.setItem(STORAGE_KEY, trimmed);
+        } catch (error) {
+          preview.replaceChildren();
+          setStatus(`無法渲染：${error.message}`, "error");
+        }
+      }
+
+      function updateScale(value) {
+        const numeric = Number(value);
+        const clamped = Number.isFinite(numeric) ? Math.min(150, Math.max(50, numeric)) : 100;
+        document.documentElement.style.setProperty("--preview-scale", clamped / 100);
+        scaleLabel.textContent = `${clamped}%`;
+      }
+
+      // 初始化
+      const cached = localStorage.getItem(STORAGE_KEY);
+      input.value = (cached && cached.trim()) || sample;
+      render(input.value);
+
+      input.addEventListener("input", (event) => render(event.target.value));
+      loadSample.addEventListener("click", () => {
+        input.value = sample;
+        render(sample);
+      });
+      clearBtn.addEventListener("click", () => {
+        input.value = "";
+        localStorage.removeItem(STORAGE_KEY);
+        render("");
+      });
+      scale.addEventListener("input", (event) => updateScale(event.target.value));
+      updateScale(scale.value);
+    })();
+  </script>
+</body>
+</html>
