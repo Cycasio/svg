@@ -1,6 +1,8 @@
 const input = document.getElementById("svg-input");
 const preview = document.getElementById("svg-preview");
 const status = document.getElementById("status");
+const loadSampleBtn = document.getElementById("load-sample");
+const debugLog = document.getElementById("debug-log");
 
 const sample = `<svg width="240" height="240" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -14,16 +16,34 @@ const sample = `<svg width="240" height="240" viewBox="0 0 120 120" xmlns="http:
   <path d="M60 32 L78 76 H42 Z" fill="#0f172a" opacity="0.8" />
 </svg>`;
 
+function logDebug(message) {
+  if (!debugLog) return;
+  const stamp = new Date().toLocaleTimeString("zh-TW", { hour12: false });
+  const existing = debugLog.textContent === "等待輸入…" ? "" : debugLog.textContent;
+  debugLog.textContent = `[${stamp}] ${message}\n${existing}`.trim();
+}
+
+function setStatus(message, tone = "info") {
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.tone = tone;
+}
+
 function renderSvg() {
-  const raw = input.value.trim();
+  const raw = input?.value.trim() ?? "";
 
   if (!raw) {
-    preview.replaceChildren();
-    status.textContent = "貼上 SVG 後開始預覽。";
+    preview?.replaceChildren();
+    setStatus("貼上 SVG 後開始預覽。", "info");
+    logDebug("輸入為空，清除預覽。");
     return;
   }
 
   try {
+    if (typeof DOMParser === "undefined") {
+      throw new Error("此瀏覽器不支援 DOMParser");
+    }
+
     const doc = new DOMParser().parseFromString(raw, "image/svg+xml");
     const parseError = doc.querySelector("parsererror");
 
@@ -38,16 +58,38 @@ function renderSvg() {
 
     const imported = document.importNode(svg, true);
     imported.classList.add("preview-svg");
-    preview.replaceChildren(imported);
-    status.textContent = "預覽已更新。";
+    preview?.replaceChildren(imported);
+    setStatus("預覽已更新。", "success");
+    logDebug("成功渲染輸入的 SVG。");
   } catch (err) {
-    preview.replaceChildren();
-    status.textContent = `無法渲染：${err.message}`;
+    preview?.replaceChildren();
+    setStatus(`無法渲染：${err.message}`, "error");
+    logDebug(`渲染失敗：${err.message}`);
   }
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  input.value = sample;
+  if (!input) return;
+
+  input.value = input.value.trim() || sample;
+  setStatus("已載入範例，編輯後立即預覽。", "info");
+  logDebug("初始化完成，已填入預設範例。");
   renderSvg();
   input.addEventListener("input", renderSvg);
+
+  loadSampleBtn?.addEventListener("click", () => {
+    input.value = sample;
+    logDebug("載入預設範例。");
+    renderSvg();
+  });
+
+  window.addEventListener("error", (event) => {
+    logDebug(`腳本錯誤：${event.message}`);
+    setStatus("腳本發生錯誤，請查看除錯訊息。", "error");
+  });
+
+  window.addEventListener("unhandledrejection", (event) => {
+    logDebug(`未處理的 promise 拒絕：${event.reason}`);
+    setStatus("腳本發生錯誤，請查看除錯訊息。", "error");
+  });
 });
