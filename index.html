@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SVG 即時預覽</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f5f5f5;
+      --border: #d0d0d0;
+      --accent: #3a6ea5;
+      --text: #1d1d1f;
+      --code-bg: #0f172a;
+      --code-fg: #e2e8f0;
+      --preview-scale: 1;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      font-family: "Inter", "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      padding: clamp(1rem, 2vw, 1.5rem);
+      border-bottom: 1px solid var(--border);
+      background: white;
+    }
+
+    h1 {
+      margin: 0 0 0.25rem;
+      font-size: 1.5rem;
+      letter-spacing: 0.02em;
+    }
+
+    p.lead {
+      margin: 0;
+      color: #5c6470;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: clamp(0.75rem, 2vw, 1.25rem);
+      padding: clamp(1rem, 2.5vw, 1.5rem);
+      max-width: min(1200px, 100%);
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @media (min-width: 980px) {
+      main {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    .panel {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 8px 22px rgba(17, 24, 39, 0.08);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 320px;
+    }
+
+    .panel header {
+      padding: 1rem 1.25rem;
+      border: 0;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .panel .body {
+      padding: 1rem 1.25rem 1.25rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 260px;
+      resize: vertical;
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font: 14px/1.5 "JetBrains Mono", "SFMono-Regular", "Menlo", "Consolas", monospace;
+      background: var(--code-bg);
+      color: var(--code-fg);
+      outline-color: var(--accent);
+      max-width: 100%;
+    }
+
+    .info {
+      font-size: 0.9rem;
+      color: #6b7280;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+      background: white;
+      color: var(--text);
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    button:hover,
+    button:focus-visible {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(58, 110, 165, 0.2);
+      outline: none;
+    }
+
+    .preview-container {
+      display: grid;
+      place-items: center;
+      background: repeating-conic-gradient(#f8fafc 0% 25%, #eef2ff 0% 50%);
+      min-height: 320px;
+      border-top: 1px solid var(--border);
+      padding: clamp(0.75rem, 2vw, 1.25rem);
+      overflow: auto;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    #svg-preview {
+      width: 100%;
+      display: grid;
+      place-items: center;
+      padding: clamp(0.75rem, 2vw, 1.5rem);
+      max-width: min(960px, 100%);
+      transform: scale(var(--preview-scale));
+      transform-origin: center;
+    }
+
+    #svg-preview .preview-svg {
+      display: block;
+      width: auto;
+      height: auto;
+      max-height: min(70vh, 720px);
+      max-width: 100%;
+      object-fit: contain;
+    }
+
+    .preview-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1rem;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.25rem 1rem;
+      color: #475569;
+      border-bottom: 1px solid var(--border);
+      background: #f8fafc;
+    }
+
+    .preview-controls label {
+      font-weight: 600;
+    }
+
+    .preview-controls input[type="range"] {
+      flex: 1;
+      min-width: 160px;
+    }
+
+    #status {
+      margin: 0;
+      font-size: 0.95rem;
+      color: #4b5563;
+    }
+
+    #status[data-tone="success"] {
+      color: #15803d;
+    }
+
+    #status[data-tone="error"] {
+      color: #b91c1c;
+    }
+
+    .debug {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #f8fafc;
+      padding: 0.75rem 1rem;
+      color: #475569;
+      font-size: 0.9rem;
+    }
+
+    .debug summary {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .debug pre {
+      margin: 0.5rem 0 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 240px;
+      overflow: auto;
+      background: white;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 0.75rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1rem 1.5rem 1.5rem;
+      color: #6b7280;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 720px) {
+      h1 {
+        font-size: 1.35rem;
+      }
+
+      main {
+        padding: 1rem;
+      }
+
+      .panel .body {
+        padding: 0.75rem 1rem 1rem;
+      }
+
+      .actions {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .preview-controls {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      textarea {
+        min-height: 200px;
+      }
+
+      #svg-preview {
+        padding: 0.75rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SVG 即時預覽</h1>
+    <p class="lead">貼上或輸入 SVG 語法，右側立即顯示圖像。</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <header>
+        <h2>SVG 語法</h2>
+      </header>
+      <div class="body">
+        <textarea
+          id="svg-input"
+          spellcheck="false"
+          aria-label="SVG input"
+          placeholder="貼上完整的 <svg> 標籤"
+        ></textarea>
+        <div class="actions">
+          <p class="info">支援完整 &lt;svg&gt; 標籤；修改時自動更新預覽並記錄在本機。</p>
+          <button id="load-sample" type="button">載入範例</button>
+          <button id="clear-input" type="button">清除輸入</button>
+        </div>
+        <p id="status" role="status" aria-live="polite">貼上 SVG 後開始預覽。</p>
+        <details class="debug" id="debug-panel">
+          <summary>除錯訊息</summary>
+          <pre id="debug-log">等待輸入…</pre>
+        </details>
+      </div>
+    </section>
+
+    <section class="panel">
+      <header>
+        <h2>即時預覽</h2>
+      </header>
+      <div class="preview-controls">
+        <label for="preview-scale">預覽縮放</label>
+        <input
+          type="range"
+          id="preview-scale"
+          name="preview-scale"
+          min="50"
+          max="140"
+          step="10"
+          value="100"
+          aria-label="預覽縮放百分比"
+        />
+        <span id="preview-scale-label" aria-live="polite">100%</span>
+      </div>
+      <div class="preview-container">
+        <div id="svg-preview" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>提供一個乾淨的空間，方便快速檢視與調整 SVG。</footer>
+
+  <noscript class="debug">需要啟用 JavaScript 才能顯示即時預覽。</noscript>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
