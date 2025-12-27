@@ -13,10 +13,18 @@
       --text: #1d1d1f;
       --code-bg: #0f172a;
       --code-fg: #e2e8f0;
+      --preview-scale: 1;
     }
 
     * {
       box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      overflow-x: hidden;
     }
 
     body {
@@ -46,6 +54,18 @@
 
     main {
       display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1rem;
+      padding: 1.5rem clamp(1rem, 3vw, 2rem) 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @media (min-width: 980px) {
+      main {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 1rem;
       padding: 1.5rem;
@@ -101,12 +121,80 @@
       color: #6b7280;
     }
 
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+      background: white;
+      color: var(--text);
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    button:hover,
+    button:focus-visible {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(58, 110, 165, 0.2);
+      outline: none;
+    }
+
     .preview-container {
       display: grid;
       place-items: center;
       background: repeating-conic-gradient(#f8fafc 0% 25%, #eef2ff 0% 50%);
       min-height: 320px;
       border-top: 1px solid var(--border);
+      padding: 1rem;
+      overflow: auto;
+      width: 100%;
+    }
+
+    #svg-preview {
+      width: clamp(240px, 100%, 960px);
+      display: grid;
+      place-items: center;
+      padding: clamp(1rem, 2vw, 2rem);
+      max-width: 100%;
+    }
+
+    #svg-preview .preview-svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: min(70vh, 720px);
+      max-width: 100%;
+      object-fit: contain;
+      transform: scale(var(--preview-scale));
+      transform-origin: center;
+    }
+
+    .preview-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1rem;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.25rem 1rem;
+      color: #475569;
+      border-bottom: 1px solid var(--border);
+      background: #f8fafc;
+    }
+
+    .preview-controls label {
+      font-weight: 600;
+    }
+
+    .preview-controls input[type="range"] {
+      flex: 1;
+      min-width: 160px;
     }
 
     #svg-preview {
@@ -121,6 +209,40 @@
       margin: 0;
       font-size: 0.95rem;
       color: #4b5563;
+    }
+
+    #status[data-tone="success"] {
+      color: #15803d;
+    }
+
+    #status[data-tone="error"] {
+      color: #b91c1c;
+    }
+
+    .debug {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #f8fafc;
+      padding: 0.75rem 1rem;
+      color: #475569;
+      font-size: 0.9rem;
+    }
+
+    .debug summary {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .debug pre {
+      margin: 0.5rem 0 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 240px;
+      overflow: auto;
+      background: white;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 0.75rem;
     }
 
     footer {
@@ -143,6 +265,22 @@
         <h2>SVG 語法</h2>
       </header>
       <div class="body">
+        <textarea
+          id="svg-input"
+          spellcheck="false"
+          aria-label="SVG input"
+          placeholder="貼上完整的 <svg> 標籤"
+        ></textarea>
+        <div class="actions">
+          <p class="info">支援完整 &lt;svg&gt; 標籤；修改時自動更新預覽並記錄在本機。</p>
+          <button id="load-sample" type="button">載入範例</button>
+          <button id="clear-input" type="button">清除輸入</button>
+        </div>
+        <p id="status" role="status" aria-live="polite">貼上 SVG 後開始預覽。</p>
+        <details class="debug" id="debug-panel">
+          <summary>除錯訊息</summary>
+          <pre id="debug-log">等待輸入…</pre>
+        </details>
         <textarea id="svg-input" spellcheck="false" aria-label="SVG input"></textarea>
         <p class="info">支援完整 &lt;svg&gt; 標籤；修改時自動更新預覽。</p>
         <p id="status">貼上 SVG 後開始預覽。</p>
@@ -153,6 +291,20 @@
       <header>
         <h2>即時預覽</h2>
       </header>
+      <div class="preview-controls">
+        <label for="preview-scale">預覽縮放</label>
+        <input
+          type="range"
+          id="preview-scale"
+          name="preview-scale"
+          min="50"
+          max="140"
+          step="10"
+          value="100"
+          aria-label="預覽縮放百分比"
+        />
+        <span id="preview-scale-label" aria-live="polite">100%</span>
+      </div>
       <div class="preview-container">
         <div id="svg-preview" aria-live="polite"></div>
       </div>
@@ -161,6 +313,9 @@
 
   <footer>提供一個乾淨的空間，方便快速檢視與調整 SVG。</footer>
 
+  <noscript class="debug">需要啟用 JavaScript 才能顯示即時預覽。</noscript>
+
+  <script src="app.js" defer></script>
   <script>
     const input = document.getElementById("svg-input");
     const preview = document.getElementById("svg-preview");
