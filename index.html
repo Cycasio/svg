@@ -69,6 +69,73 @@
       gap: 0.65rem;
     }
 
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .control-group label {
+      font-size: 0.9rem;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    select, input[type="number"] {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      font-size: 0.9rem;
+      cursor: pointer;
+      outline-color: var(--accent);
+    }
+
+    input[type="number"] {
+      width: 80px;
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: white;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button.secondary {
+      background: #64748b;
+    }
+
+    button.secondary:hover {
+      background: #475569;
+    }
+
+    button:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+    }
+
     .status {
       margin: 0;
       font-size: 0.95rem;
@@ -109,6 +176,30 @@
 
     <section class="panel preview-area">
       <h2>預覽圖片</h2>
+
+      <div class="controls">
+        <div class="control-group">
+          <label for="resolution">解析度:</label>
+          <select id="resolution">
+            <option value="512">512×512</option>
+            <option value="1024" selected>1024×1024</option>
+            <option value="2048">2048×2048</option>
+            <option value="4096">4096×4096</option>
+            <option value="custom">自定義</option>
+          </select>
+        </div>
+
+        <div class="control-group" id="custom-res" style="display: none;">
+          <input type="number" id="custom-width" placeholder="寬" min="1" max="8192" value="1024">
+          <span>×</span>
+          <input type="number" id="custom-height" placeholder="高" min="1" max="8192" value="1024">
+        </div>
+
+        <button id="download-png">下載 PNG</button>
+        <button id="download-svg" class="secondary">下載 SVG</button>
+        <button id="copy-image" class="secondary">複製圖片</button>
+      </div>
+
       <div class="preview-shell" id="preview" aria-live="polite"></div>
     </section>
   </main>
@@ -118,6 +209,13 @@
       const input = document.getElementById("svg-input");
       const preview = document.getElementById("preview");
       const status = document.getElementById("status");
+      const resolutionSelect = document.getElementById("resolution");
+      const customResDiv = document.getElementById("custom-res");
+      const customWidth = document.getElementById("custom-width");
+      const customHeight = document.getElementById("custom-height");
+      const downloadPngBtn = document.getElementById("download-png");
+      const downloadSvgBtn = document.getElementById("download-svg");
+      const copyImageBtn = document.getElementById("copy-image");
       const STORAGE_KEY = "svg-inline-preview";
 
       const sample = `<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
@@ -142,6 +240,7 @@
           preview.replaceChildren();
           setStatus("貼上 SVG 語法後即可立即顯示。");
           localStorage.removeItem(STORAGE_KEY);
+          updateButtonStates(false);
           return;
         }
 
@@ -162,11 +261,128 @@
           preview.replaceChildren(clone);
           setStatus("預覽已更新，內容已儲存到本機。");
           localStorage.setItem(STORAGE_KEY, trimmed);
+          updateButtonStates(true);
         } catch (error) {
           preview.replaceChildren();
           setStatus(`無法渲染：${error.message}`);
+          updateButtonStates(false);
         }
       }
+
+      function updateButtonStates(enabled) {
+        downloadPngBtn.disabled = !enabled;
+        downloadSvgBtn.disabled = !enabled;
+        copyImageBtn.disabled = !enabled;
+      }
+
+      function getResolution() {
+        const resValue = resolutionSelect.value;
+        if (resValue === "custom") {
+          return {
+            width: parseInt(customWidth.value) || 1024,
+            height: parseInt(customHeight.value) || 1024
+          };
+        }
+        const size = parseInt(resValue);
+        return { width: size, height: size };
+      }
+
+      async function svgToPng(width, height) {
+        const svgElement = preview.querySelector("svg");
+        if (!svgElement) {
+          throw new Error("沒有可用的 SVG");
+        }
+
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+
+        // 白色背景
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0, width, height);
+            canvas.toBlob((blob) => {
+              if (blob) {
+                resolve(blob);
+              } else {
+                reject(new Error("無法生成圖片"));
+              }
+            }, "image/png");
+          };
+          img.onerror = () => reject(new Error("圖片載入失敗"));
+          img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+        });
+      }
+
+      function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      // 處理解析度選擇
+      resolutionSelect.addEventListener("change", () => {
+        if (resolutionSelect.value === "custom") {
+          customResDiv.style.display = "flex";
+        } else {
+          customResDiv.style.display = "none";
+        }
+      });
+
+      // 下載 PNG
+      downloadPngBtn.addEventListener("click", async () => {
+        try {
+          setStatus("正在生成 PNG...");
+          const { width, height } = getResolution();
+          const blob = await svgToPng(width, height);
+          downloadBlob(blob, `svg-export-${width}x${height}.png`);
+          setStatus(`PNG 已下載 (${width}×${height})`);
+        } catch (error) {
+          setStatus(`下載失敗：${error.message}`);
+        }
+      });
+
+      // 下載 SVG
+      downloadSvgBtn.addEventListener("click", () => {
+        try {
+          const svgElement = preview.querySelector("svg");
+          if (!svgElement) {
+            throw new Error("沒有可用的 SVG");
+          }
+          const svgData = new XMLSerializer().serializeToString(svgElement);
+          const blob = new Blob([svgData], { type: "image/svg+xml" });
+          downloadBlob(blob, "svg-export.svg");
+          setStatus("SVG 已下載");
+        } catch (error) {
+          setStatus(`下載失敗：${error.message}`);
+        }
+      });
+
+      // 複製圖片
+      copyImageBtn.addEventListener("click", async () => {
+        try {
+          setStatus("正在複製圖片...");
+          const { width, height } = getResolution();
+          const blob = await svgToPng(width, height);
+          await navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blob })
+          ]);
+          setStatus(`圖片已複製到剪貼簿 (${width}×${height})`);
+        } catch (error) {
+          setStatus(`複製失敗：${error.message}`);
+        }
+      });
 
       const cached = localStorage.getItem(STORAGE_KEY);
       input.value = (cached && cached.trim()) || sample;
